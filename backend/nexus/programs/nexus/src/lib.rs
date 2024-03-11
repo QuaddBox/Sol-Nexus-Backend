@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{program, program_error::ProgramError};
+use anchor_lang::solana_program::{program_error::ProgramError};
+use achor_lang::solana_program::entrypoint::ProgramResult;
 use anchor_spl::token::{self, TokenAccount, Transfer};
 
 declare_id!("FcNNxr9x2FHRtAyNjzePDJeu6m4ShGkBy9XedjUo1aCX");
@@ -26,10 +27,11 @@ pub mod nexus {
         })
     }
 
-    pub fn create_event(&mut self, ctx: Context<CreateEvent>, name: String, tickets_available: u32, ticket_price: u64) -> ProgramResult {
+    pub fn create_event(&mut self, ctx: Context<CreateEvent>, name: String, tickets_available: u32, ticket_price: u64, location : String) -> ProgramResult {
         let new_event = Event {
             id: self.events.len() as u32,
             name,
+            location,
             tickets_available,
             ticket_price,
         };
@@ -98,7 +100,7 @@ pub struct Ticketing {
     pub tickets: Vec<Ticket>,
 }
 
-#[derive(Accounts)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum TicketStatus {
     Valid,
     Invalid,
@@ -153,6 +155,7 @@ pub struct IsTicketFromOrganization<'info> {
 pub struct Event {
     pub id: u32,
     pub name: String,
+    // pub category : Vec<String>,
     pub location : String,
     pub tickets_available: u32,
     pub ticket_price: u64,
