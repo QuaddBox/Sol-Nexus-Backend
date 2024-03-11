@@ -153,6 +153,7 @@ pub struct IsTicketFromOrganization<'info> {
 pub struct Event {
     pub id: u32,
     pub name: String,
+    pub location : String,
     pub tickets_available: u32,
     pub ticket_price: u64,
 }
