@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{program_error::ProgramError};
-use achor_lang::solana_program::entrypoint::ProgramResult;
+use anchor_lang::solana_program::entrypoint::ProgramResult;
 use anchor_spl::token::{self, TokenAccount, Transfer};
 
 declare_id!("FcNNxr9x2FHRtAyNjzePDJeu6m4ShGkBy9XedjUo1aCX");
@@ -9,7 +9,7 @@ declare_id!("FcNNxr9x2FHRtAyNjzePDJeu6m4ShGkBy9XedjUo1aCX");
 pub mod nexus {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialize>, _name : String, _email : String) -> Result<()> {
         Ok(())
     }
 
@@ -121,6 +121,7 @@ pub struct Initialize {}
 pub struct CreateEvent<'info> {
     #[account(init, payer = user, space = 256)]
     pub event_account: Account<'info, Event>,
+    #[account(mut)]
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -151,7 +152,7 @@ pub struct IsTicketFromOrganization<'info> {
     pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+#[derive(Accounts, AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Event {
     pub id: u32,
     pub name: String,
@@ -159,4 +160,8 @@ pub struct Event {
     pub location : String,
     pub tickets_available: u32,
     pub ticket_price: u64,
+}
+
+pub struct Initialize {
+
 }
