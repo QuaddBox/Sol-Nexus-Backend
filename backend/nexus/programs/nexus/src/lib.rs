@@ -85,10 +85,10 @@ pub mod nexus {
         }
     }
 
+    // Validate tickets existence
+
     pub fn is_ticket_from_organization(&self, ctx: Context<IsTicketFromOrganization>, ticket_id: u32) -> ProgramResult {
         let ticket = self.tickets.get(ticket_id as usize).ok_or(ProgramError::InvalidArgument)?;
-
-       
         Ok(())
     }
 }
