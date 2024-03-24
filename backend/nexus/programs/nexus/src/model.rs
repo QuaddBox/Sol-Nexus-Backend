@@ -8,7 +8,7 @@ pub struct UserProfile {
     pub password : String,
     pub date : String,
     pub total_ticket : u8,
-    pub events_created : u8,
+    pub events_created : u32,
 }
 
 #[account]
@@ -23,7 +23,7 @@ pub struct Event {
     pub ticket_price: u64,
     pub purchasers : Vec<Pubkey>,
     pub starting_date : String,
-    pub ending_date ; String,
+    pub ending_date : String,
     pub status : Status
 } 
 
