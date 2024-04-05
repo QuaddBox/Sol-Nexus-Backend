@@ -1,34 +1,38 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{program_error::ProgramError};
+// use anchor_lang::solana_program::{program_error::ProgramError};
 use anchor_lang::solana_program::entrypoint::ProgramResult;
-use anchor_spl::token::{self, TokenAccount, Mint, Token, Transfer};
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-pub mod model;
+use solana_program::system_instruction;
+
+pub mod models;
 pub mod error;
 pub mod constants;
 
-use crate::{constants::*, error::*, model::*};
+use crate::{constants::*, error::*, models::*};
 
+// This is your program's public key and it will update
+// automatically when you build the project.
+declare_id!("CiYL3S3NbUhBXzdW5gYnr7bgMnpsT5yiB5TKv92Gc9pw");
 
-// https://beta.solpg.io/660010b4cffcf4b13384cfe2
-// https://beta.solpg.io/6600149acffcf4b13384cfe3
-
-
-declare_id!("FcNNxr9x2FHRtAyNjzePDJeu6m4ShGkBy9XedjUo1aCX");
 
 #[program]
-mod nexus {
+
+mod solnexus {
+    
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, _name : String, _email : String, _password : String, _date : String) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialize>, _name : String, _test : String, _avatar : String, _email : String, _password : String, _date : String) -> Result<()> {
         let profile  = &mut ctx.accounts.user_profile; 
         profile.authority = ctx.accounts.authority.key();
         profile.name = _name.to_string();
+        profile.avatar = _avatar.to_string();
         profile.email = _email.to_string();
-        profile.password = _password.to_string();
+        // profile.password = _password.to_string();
         profile.date = _date.to_string();
         profile.total_ticket = 0;
-        profile.events_created = 0;        
+        profile.events_created = 0; 
+        msg!(" User Initialised! ");
         Ok(())
     }
 
@@ -107,48 +111,62 @@ mod nexus {
         Ok(())
     }
 
-    pub fn buy_ticket(ctx: Context<PurchaseTicket>, _event_id: u32, _uid : String) -> Result<()> {
+    pub fn validate_ticket(ctx: Context<ValidateTicket>, ticket_id: u32) -> Result<()> {
+        // let ticket = ctx.accounts.tickets.get(ticket_id as usize).ok_or(EventError::InvalidTicket)?;
         let event = &mut ctx.accounts.event_account;
+
+        if event.status == Status::Closed {
+            return err!(EventError::EventClosed)
+        };
+        
+        let ticket = &mut ctx.accounts.ticket_account;
+
+        match ticket.status {
+            TicketStatus::Valid => Ok(()),
+            _ => err!(EventError::InvalidTicket),
+        }
+
+
+    }
+
+    pub fn buy_ticket(ctx: Context<PurchaseTicketTournament>, _ticket_hash : String) -> Result<()> {
+        // let events = ctx.accounts.events.get_mut(event_id as usize).ok_or(EventError::InvalidEvent)?;
+
+        let event = &mut ctx.accounts.event_account;
+        let profile = &mut ctx.accounts.user_profile;
 
 
         if event.tickets_available == 0 {
-            return err!(EventError::EventClosed); // No tickets available
+            return err!(EventError::NoTicketsAvailable);
         }
 
         let ticket_price = event.ticket_price;
-        // transfer_lamports(ticket_price);
         // token::transfer(ctx.accounts.into(), ctx.accounts.from.clone(), ticket_price)?;
 
-        // let from_account = &ctx.accounts.authority.key();
-        // let to_account = &ctx.accounts.event_account.key();
+        let ticket = &mut ctx.accounts.ticket_account;
 
-        // // Create the transfer instruction
-        // let transfer_instruction =
-        //     system_instruction::transfer(
-        //         &ctx.accounts.authority.key(),
-        //         &ctx.accounts.event_account.key(), 
-        //         ticket_price
-        //     );
-
-        // // Invoke the transfer instruction
-        // anchor_lang::solana_program::program::invoke_signed(
-        //     &transfer_instruction,
-        //     &[
-        //         ctx.accounts.authority.to_account_info(),
-        //         ctx.accounts.event_account.to_account_info(),
-        //         ctx.accounts.system_program.to_account_info(),
-        //     ],
-        //     &[],
-        // )?;
-
-        let ticket = &mut ctx.accounts.ticketing;
-        ticket.event_id = _event_id;
+        ticket.event_id = event.id;
+        ticket.ticket_hash = _ticket_hash.to_string();
         ticket.owner = ctx.accounts.authority.key();
         ticket.status = TicketStatus::Valid;
-        ticket.uid = _uid.to_string();
 
+        profile.total_ticket = profile.total_ticket.checked_add(1).unwrap();
 
         event.tickets_available -= 1;
+        Ok(())
+    }
+
+    pub fn transfer_ticket(ctx: Context<TransferTicket>, new_owner: Pubkey) -> Result<()> {
+        // let ticket = ctx.accounts.tickets.get_mut(ticket_id as usize).ok_or(EventError::InvalidTicket)?;
+
+        let ticket = &mut ctx.accounts.ticket_account;
+
+        if ticket.owner != ctx.accounts.authority.key() {
+            return err!(EventError::NotTicketOwner);
+        }
+
+        ticket.owner = new_owner;
+        ticket.status = TicketStatus::Transferred(new_owner);
         Ok(())
     }
     
@@ -165,7 +183,8 @@ pub struct Initialize<'info> {
         seeds = [USER_IDENTIFIER, authority.key().as_ref()],
         bump,
         payer = authority,
-        space = 8 + std::mem::size_of::<UserProfile>(),
+        space = 8 + 2312 + 2312
+        // std::mem::size_of::<UserProfile>(),
     )]
     pub user_profile: Box<Account<'info, UserProfile>>,
 
@@ -265,24 +284,42 @@ pub struct EndEvent<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// Define the necessary accounts for the PurchaseTicket instruction
-
-
-// Define the necessary accounts for the TransferTicket instruction
 #[derive(Accounts)]
-pub struct TransferTicket<'info> {
+#[instruction(ticket_hash: String, event_id : u8)]
+pub struct ValidateTicket<'info> {
     #[account(mut)]
-    pub sender: Signer<'info>,
+    pub authority: Signer<'info>,
 
-    #[account(mut)]
-    pub ticket_account: Box<Account<'info, Ticket>>,
+    #[account(
+        mut,
+        seeds = [USER_IDENTIFIER, authority.key().as_ref()],
+        bump,
+    )]
+    pub user_profile: Box<Account<'info, UserProfile>>,
 
-    pub new_owner: AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [EVENT_IDENTIFIER, &[event_id].as_ref()],
+        bump,
+    )]
+    pub event_account: Box<Account<'info, Event>>,
+
+    #[account{
+        mut,
+        seeds = [TICKET_IDENTIFIER, authority.key().as_ref()],
+        bump,
+    }]
+    pub ticket_account : Box<Account<'info, Ticket>>,
+
+    pub system_program: Program<'info, System>,
+
+    // #[account(mut)]
+    // pub tickets: Vec<Ticket>,
 }
 
 #[derive(Accounts)]
 #[instruction(event_id : u8)]
-pub struct PurchaseTicket<'info> {
+pub struct PurchaseTicketTournament<'info> {
     #[account(mut)]
     pub from: Signer<'info>,
 
@@ -300,8 +337,12 @@ pub struct PurchaseTicket<'info> {
     )]
     pub event_account: Box<Account<'info, Event>>,
 
-    #[account(mut)]
-    pub ticketing : Box<Account<'info, Ticket>>,
+    #[account{
+        mut,
+        seeds = [TICKET_IDENTIFIER, authority.key().as_ref()],
+        bump,
+    }]
+    pub ticket_account : Box<Account<'info, Ticket>>,
 
     // #[account(mut)]
     // pub from: Account<'info, TokenAccount>,
@@ -310,23 +351,35 @@ pub struct PurchaseTicket<'info> {
     pub authority: Signer<'info>,
     // pub token_program: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
+    // pub token_program: Program<'info, Token>,
 }
 
-// #[derive(Accounts)]
-// pub struct BuyTicket<'info> {
-//     #[account(mut)]
-//     pub from: Account<'info, TokenAccount>,
-//     #[account(mut)]
-//     pub to: Account<'info, TokenAccount>,
-//     pub authority: Signer<'info>,
-//     pub token_program: AccountInfo<'info>,
-// }
+#[derive(Accounts)]
+#[instruction(ticket_hash: String, new_owner: Pubkey)]
+pub struct TransferTicket<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+     #[account{
+        mut,
+        seeds = [TICKET_IDENTIFIER, authority.key().as_ref()],
+        bump,
+    }]
+    pub ticket_account : Box<Account<'info, Ticket>>,
 
-// #[derive(Accounts)]
-// pub struct TransferTicket<'info> {
-//     #[account(mut)]
-//     pub authority: Signer<'info>,
-// }
+    pub system_program: Program<'info, System>,
+
+}
+
+// // #[derive(Accounts)]
+// // #[instruction(event_id: u32)]
+// // pub struct BuyTicket<'info> {
+// //     #[account(mut)]
+// //     pub from: Signer<'info>,
+// //     #[account(mut)]
+// //     pub events: Vec<Event>,
+// //     pub system_program: Program<'info, System>,
+// //     pub token_program: Program<'info, Token>,
+// // }
 
 #[derive(Accounts)]
 pub struct TransferLamports<'info> {
@@ -336,5 +389,7 @@ pub struct TransferLamports<'info> {
     pub to: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
+
+
 
 

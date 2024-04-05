@@ -1,11 +1,13 @@
 use anchor_lang::prelude::*;
 
 #[account]
+#[derive(Default)]
 pub struct UserProfile {
     pub authority : Pubkey,
     pub name : String,
+    pub avatar : String,
     pub email : String,
-    pub password : String,
+    // pub password : String,
     pub date : String,
     pub total_ticket : u8,
     pub events_created : u32,
@@ -27,11 +29,11 @@ pub struct Event {
     pub status : Status
 } 
 
-#[accounts]
-pub struct Ticketing {
-    pub events: Vec<Event>,
-    pub tickets: Vec<Ticket>,
-}
+// #[account]
+// pub struct Ticketing {
+//     pub events: Vec<Event>,
+//     pub tickets: Vec<Ticket>,
+// }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum TicketStatus {
@@ -40,9 +42,11 @@ pub enum TicketStatus {
     Transferred(Pubkey),
 }
 
-#[accounts]
+#[account]
 pub struct Ticket {
     pub event_id: u32,
+    // pub ticket_id : u32,
+    pub ticket_hash : String,
     pub owner: Pubkey,
     pub status: TicketStatus,
 }

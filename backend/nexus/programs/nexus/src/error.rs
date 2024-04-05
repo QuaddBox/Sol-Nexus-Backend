@@ -3,11 +3,17 @@ use anchor_lang::prelude::*;
 #[error_code]
 pub enum EventError {
     #[msg("Ticket is not Valid")]
-    InvalidTicket
+    InvalidTicket,
     #[msg("Not allowed")]
-    NotAllowed
+    NotAllowed,
+    #[msg("Event has ended! ")]
+    EventClosed,
+    #[msg("You are not the owner of this ticket")]
+    NotTicketOwner,
     #[msg("Ticket has expired")]
-    Expired
+    Expired,
     #[msg("Math operation overflow")]
-    MathOverflow
+    MathOverflow,
+    #[msg("No ticket available")]
+    NoTicketsAvailable
 }
