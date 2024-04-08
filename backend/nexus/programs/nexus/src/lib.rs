@@ -23,6 +23,7 @@ mod solnexus {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, _name : String, _test : String, _avatar : String, _email : String, _password : String, _date : String) -> Result<()> {
+        msg!("......Creating profile");
         let profile  = &mut ctx.accounts.user_profile; 
         profile.authority = ctx.accounts.authority.key();
         profile.name = _name.to_string();
@@ -84,8 +85,9 @@ mod solnexus {
         event.status = Status::Available; // Available for sale
 
         // if _event_type == "free" {
-
         // }
+
+        msg!("Event successfully created.");
 
         Ok(())
     }
@@ -98,7 +100,6 @@ mod solnexus {
         );
         event.status = Status::InProgress;
         Ok(())
-   
     }
 
     pub fn end_event(ctx : Context<EndEvent>, _event_id : u8) -> Result<()> {
@@ -117,6 +118,7 @@ mod solnexus {
 
         if event.status == Status::Closed {
             return err!(EventError::EventClosed)
+            msg!("Ticket has expired, checkout other events.");
         };
         
         let ticket = &mut ctx.accounts.ticket_account;
@@ -125,8 +127,6 @@ mod solnexus {
             TicketStatus::Valid => Ok(()),
             _ => err!(EventError::InvalidTicket),
         }
-
-
     }
 
     pub fn buy_ticket(ctx: Context<PurchaseTicketTournament>, _ticket_hash : String) -> Result<()> {
@@ -153,6 +153,7 @@ mod solnexus {
         profile.total_ticket = profile.total_ticket.checked_add(1).unwrap();
 
         event.tickets_available -= 1;
+        msg!("Ticket successfully purchased.");
         Ok(())
     }
 
